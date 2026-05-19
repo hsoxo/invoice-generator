@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+dist
+.DS_Store
+*.log
+.env*.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# Local tooling / artifacts (not part of the app)
+.omc/
+.playwright-mcp/
+Screenshot*.png
+100-Customer.pdf
