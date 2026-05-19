@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Invoice, LineItem } from "@/lib/types";
-import { emptyInvoice } from "@/lib/types";
-import {
-  loadHistory,
-  upsertInvoice,
-  deleteInvoice,
-} from "@/lib/storage";
+import type { Invoice, LineItem, TemplateId } from "@/lib/types";
+import { emptyInvoice, TEMPLATES } from "@/lib/types";
+import { loadHistory, upsertInvoice, deleteInvoice } from "@/lib/storage";
 import {
   CURRENCIES,
   computeSubtotal,
@@ -15,6 +11,15 @@ import {
   formatAmount,
 } from "@/lib/totals";
 import { generatePdf } from "@/lib/pdf";
+
+const normalize = (inv: Invoice): Invoice => ({
+  ...inv,
+  template: (inv.template ?? "minimal") as TemplateId,
+  items:
+    inv.items && inv.items.length > 0
+      ? inv.items
+      : [{ id: crypto.randomUUID(), description: "", amount: 0 }],
+});
 
 export default function Page() {
   const [invoice, setInvoice] = useState<Invoice>(() => emptyInvoice());
@@ -61,7 +66,7 @@ export default function Page() {
     generatePdf(invoice);
   };
 
-  const handleLoad = (inv: Invoice) => setInvoice({ ...inv });
+  const handleLoad = (inv: Invoice) => setInvoice(normalize(inv));
   const handleNew = () => setInvoice(emptyInvoice());
   const handleDelete = (id: string) => {
     const next = deleteInvoice(id);
@@ -77,7 +82,7 @@ export default function Page() {
             Invoice Generator
           </h1>
           <p className="text-sm text-slate-500">
-            Fill in the form, then save and download a PDF.
+            Fill in the form, pick a template, then save and download a PDF.
           </p>
         </div>
         <button
@@ -89,9 +94,36 @@ export default function Page() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
-        {/* Form card */}
         <section className="rounded-2xl border border-blue-200 bg-blue-50/70 p-6 shadow-sm">
-          {/* From */}
+          {/* Template picker */}
+          <div className="mb-5">
+            <div className="mb-2 text-sm font-semibold text-slate-700">
+              Template
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {TEMPLATES.map((t) => {
+                const active = invoice.template === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => update("template", t.id)}
+                    className={`rounded-lg border p-3 text-left text-xs transition ${
+                      active
+                        ? "border-blue-500 bg-white shadow-sm ring-2 ring-blue-200"
+                        : "border-slate-300 bg-white hover:border-blue-300"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-slate-800">
+                      {t.name}
+                    </div>
+                    <div className="mt-1 text-slate-500">{t.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <label className="mb-1 block text-sm font-semibold text-slate-700">
             From
           </label>
@@ -103,7 +135,6 @@ export default function Page() {
             className="mb-5 w-full rounded-md border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
 
-          {/* Bill To + meta */}
           <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_220px]">
             <div>
               <label className="mb-1 block text-sm font-semibold text-slate-700">
@@ -133,9 +164,9 @@ export default function Page() {
                   Invoice Date
                 </label>
                 <input
+                  type="date"
                   value={invoice.invoiceDate}
                   onChange={(e) => update("invoiceDate", e.target.value)}
-                  placeholder="DD/MM/YYYY"
                   className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
@@ -144,14 +175,12 @@ export default function Page() {
 
           <hr className="my-6 border-blue-200" />
 
-          {/* Item header */}
           <div className="mb-2 grid grid-cols-[1fr_140px_36px] gap-3 text-sm font-semibold text-slate-700">
             <div>Description</div>
             <div>Amount</div>
             <div />
           </div>
 
-          {/* Items */}
           <div className="space-y-2">
             {invoice.items.map((it) => (
               <div
@@ -198,7 +227,6 @@ export default function Page() {
             Add New Item
           </button>
 
-          {/* Totals */}
           <div className="mt-6 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-700">Subtotal</span>
@@ -226,7 +254,6 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Terms */}
           <div className="mt-6">
             <label className="mb-1 block text-sm font-semibold text-slate-700">
               Terms &amp; Conditions
@@ -248,7 +275,6 @@ export default function Page() {
           </button>
         </section>
 
-        {/* History sidebar */}
         <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
             History
@@ -283,6 +309,7 @@ export default function Page() {
                     </div>
                     <div className="truncate text-xs text-slate-500">
                       {h.billTo?.split("\n")[0] || "No customer"} ·{" "}
+                      {h.template || "minimal"} ·{" "}
                       {new Date(h.createdAt).toLocaleDateString()}
                     </div>
                   </button>
