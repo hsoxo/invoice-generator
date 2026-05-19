@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Invoice, LineItem, TemplateId } from "@/lib/types";
 import { emptyInvoice, TEMPLATES } from "@/lib/types";
-import { loadHistory, upsertInvoice, deleteInvoice } from "@/lib/storage";
+import { loadHistory, appendInvoice, deleteInvoice } from "@/lib/storage";
 import {
   CURRENCIES,
   computeSubtotal,
@@ -61,8 +61,8 @@ export default function Page() {
     }));
 
   const handleSaveAndPdf = () => {
-    const next = upsertInvoice(invoice);
-    setHistory(next);
+    const { list } = appendInvoice(invoice);
+    setHistory(list);
     generatePdf(invoice);
   };
 

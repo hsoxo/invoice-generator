@@ -1,6 +1,7 @@
 import type { Invoice } from "./types";
 
 const KEY = "invoice-generator:history:v1";
+const MAX_HISTORY = 20;
 
 export function loadHistory(): Invoice[] {
   if (typeof window === "undefined") return [];
@@ -19,14 +20,17 @@ export function saveHistory(items: Invoice[]) {
   window.localStorage.setItem(KEY, JSON.stringify(items));
 }
 
-export function upsertInvoice(inv: Invoice): Invoice[] {
+export function appendInvoice(inv: Invoice): { list: Invoice[]; saved: Invoice } {
   const list = loadHistory();
-  const idx = list.findIndex((i) => i.id === inv.id);
-  const next = { ...inv, createdAt: Date.now() };
-  if (idx >= 0) list[idx] = next;
-  else list.unshift(next);
-  saveHistory(list);
-  return list;
+  const saved: Invoice = {
+    ...inv,
+    id: crypto.randomUUID(),
+    createdAt: Date.now(),
+  };
+  list.unshift(saved);
+  const trimmed = list.slice(0, MAX_HISTORY);
+  saveHistory(trimmed);
+  return { list: trimmed, saved };
 }
 
 export function deleteInvoice(id: string): Invoice[] {
